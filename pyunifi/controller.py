@@ -339,7 +339,7 @@ class Controller(object):
 
         :param target_mac: MAC address of the Switch.
         :type target_mac: str
-        :param port_idx: Port ID to power off
+        :param port_idx: Port ID to power on
         :type port_idx: int
         :returns: API Response which is the resulting complete port overrides
         :rtype: list( dict() )
