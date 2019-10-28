@@ -66,6 +66,7 @@ class Controller(object):
         :param ssl_verify: Verify the controllers SSL certificate,
             can also be "path/to/custom_cert.pem"
         """
+        self.log = logging.getLogger(__name__ + ".Controller")
         if float(version[1:]) < 4:
             raise APIError("%s controllers no longer supported" % version)
 
@@ -85,7 +86,7 @@ class Controller(object):
         self.session = requests.Session()
         self.session.verify = ssl_verify
 
-        log.debug('Controller for %s', self.url)
+        self.log.debug('Controller for %s', self.url)
         self._login()
 
     @staticmethod
@@ -240,6 +241,114 @@ class Controller(object):
         log.debug('_mac_cmd(%s, %s)', target_mac, command)
         params['mac'] = target_mac
         return self._run_command(command, params, mgr)
+
+    def get_device_stat(self, target_mac):
+        """Gets the current state & configuration of
+        the given device based on its MAC Address.
+        :param target_mac: MAC address of the device.
+        :type target_mac: str
+        :returns: Dictionary containing metadata, state,
+            capabilities and configuration of the device
+        :rtype: dict()
+        """
+        log.debug('get_device_stat(%s)', target_mac)
+        params = {"macs": [target_mac]}
+        return self._api_read('stat/device/' + target_mac, params)[0]
+
+    def get_switch_port_overrides(self, target_mac):
+        """Gets a list of port overrides, in dictionary
+        format, for the given target MAC address. The
+        dictionary contains the port_idx, portconf_id,
+        poe_mode, & name.
+
+        :param target_mac: MAC address of the device.
+        :type target_mac: str
+        :returns: [ { 'port_idx': int(), 'portconf': str,
+            'poe_mode': str, 'name': str } ]
+        :rtype: list( dict() )
+        """
+        log.debug('get_switch_port_overrides(%s)', target_mac)
+        return self.get_device_stat(target_mac)['port_overrides']
+
+    def _switch_port_power(self, target_mac, port_idx, mode):
+        """Helper method to set the given PoE mode the port/switch.
+
+        :param target_mac: MAC address of the Switch.
+        :type target_mac: str
+        :param port_idx: Port ID to target
+        :type port_idx: int
+        :param mode: PoE mode to set. ie. auto, on, off.
+        :type mode: str
+        :returns: { 'port_overrides': [ { 'port_idx': int(),
+            'portconf': str, 'poe_mode': str, 'name': str } ] }
+        :rtype: dict( list( dict() ) )
+        """
+        # TODO: Switch operations should most likely happen in a
+        # different Class, Switch.
+        log.debug('_switch_port_power(%s, %s, %s)', target_mac, port_idx, mode)
+        device_stat = self.get_device_stat(target_mac)
+        device_id = device_stat['_id']
+        overrides = device_stat['port_overrides']
+        found = False
+        for i in range(0, len(overrides)):
+            if overrides[i]['port_idx'] == port_idx:
+                # Override already exists, update..
+                overrides[i]['poe_mode'] = mode
+                found = True
+                break
+        if not found:
+            # Retrieve portconf
+            portconf_id = None
+            for port in device_stat['port_table']:
+                if port['port_idx'] == port_idx:
+                    portconf_id = port['portconf_id']
+                    break
+            if portconf_id is None:
+                log.error("Port ID %s could not be found in the port_table.")
+                raise APIError(
+                    'Port ID %s not found in port_table' % str(port_idx)
+                )
+            overrides.append({
+                "port_idx": port_idx,
+                "portconf_id": portconf_id,
+                "poe_mode": mode
+            })
+        # We return the device_id as it's needed by the parent method
+        return {"port_overrides": overrides, "device_id": device_id}
+
+    def switch_port_power_off(self, target_mac, port_idx):
+        """Powers Off the given port on the Switch identified
+        by the given MAC Address.
+
+        :param target_mac: MAC address of the Switch.
+        :type target_mac: str
+        :param port_idx: Port ID to power off
+        :type port_idx: int
+        :returns: API Response which is the resulting complete port overrides
+        :rtype: list( dict() )
+        """
+        log.debug('switch_port_power_off(%s, %s)', target_mac, port_idx)
+        params = self._switch_port_power(target_mac, port_idx, "off")
+        device_id = params['device_id']
+        del params['device_id']
+        return self._api_update('rest/device/' + device_id, params)
+
+    def switch_port_power_on(self, target_mac, port_idx):
+        """Powers On the given port on the Switch identified
+        by the given MAC Address.
+
+        :param target_mac: MAC address of the Switch.
+        :type target_mac: str
+        :param port_idx: Port ID to power on
+        :type port_idx: int
+        :returns: API Response which is the resulting complete port overrides
+        :rtype: list( dict() )
+        """
+        log.debug('switch_port_power_on(%s, %s)', target_mac, port_idx)
+        params = self._switch_port_power(target_mac, port_idx, "auto")
+        device_id = params['device_id']
+        del params['device_id']
+        return self._api_update('rest/device/' + device_id, params)
 
     def create_site(self, desc='desc'):
         """Create a new site.

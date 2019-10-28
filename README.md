@@ -199,6 +199,27 @@ Delete / revoke voucher.
 
   - `id`    -- voucher id
 
+### `get_device_stat(self, target_mac)`
+Gets the current state & configuration of the given device based on its MAC Address.
+
+  - `target_mac` -- MAC address of the device
+
+### `get_switch_port_overrides(self, target_mac)`
+Gets a list of port overrides, in dictionary format, for the given target MAC address. The dictionary contains the port_idx, portconf_id, poe_mode, & name.
+
+  - `target_mac` -- MAC address of the device
+
+### `switch_port_power_off(self, target_mac, port_idx)`
+Powers Off the given port on the Switch identified by the given MAC Address.
+
+  - `target_mac` -- MAC address of the device
+  - `port_idx`   -- Port ID to power off
+
+### `switch_port_power_on(self, target_mac, port_idx)`
+Powers On the given port on the Switch identified by the given MAC Address.
+
+  - `target_mac` -- MAC address of the device
+  - `port_idx`   -- Port ID to power on
 
 Utilities
 ---------

@@ -8,3 +8,5 @@ pyunifi.egg-info
 pyvenv.cfg
 pip-selfcheck.json
 Lib/
+.tox/
+.vscode/
