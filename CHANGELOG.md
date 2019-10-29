@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.19.0] - 2019-10-08
+## [2.19.0] - 2019-10-28
 ### Added
 - CHANGELOG
 - `get_device_stat()` method to get current state & configuration of device
