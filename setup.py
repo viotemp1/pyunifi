@@ -9,9 +9,7 @@ setup(name='pyunifi',
       author_email='finish.06@gmail.com',
       url='https://github.com/finish06/unifi-api',
       packages=['pyunifi'],
-      # Need time to update scripts
-      # scripts=['unifi-low-snr-reconnect', 'unifi-ls-clients',
-      #          'unifi-save-statistics', 'unifi-log-roaming'],
+      scripts=['unifi-create-voucher', 'unifi-ls-clients'],
       classifiers=[],
       install_requires=['requests'],
       )
