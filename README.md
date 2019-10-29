@@ -9,6 +9,10 @@ PyUnifi
 A rewrite of https://github.com/unifi-hackers/unifi-lab in cleaner Python.
 Forked from https://github.com/calmh/unifi-api due to unmaintained status and rewritten to use the Requests module.
 
+Development & Pull Request
+--------------------------
+Perform all pull requests against the development branch.  Pull requests against the master branch will not be merged, but closed.
+
 Install
 -------
 
