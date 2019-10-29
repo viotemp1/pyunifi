@@ -11,7 +11,7 @@ Forked from https://github.com/calmh/unifi-api due to unmaintained status and re
 
 Development & Pull Request
 --------------------------
-Perform all PRs against the development branch.  Pull requests against master will be closed without bring merged.
+Perform all pull requests against the development branch.  Pull requests against the master branch will not be merged, but closed.
 
 Install
 -------
