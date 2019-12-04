@@ -25,7 +25,7 @@ c = Controller(args.controller, args.username, args.password, args.port, args.ve
 users = c.get_radius_users()
 users.sort(key=lambda x: x['name'])
 
-FORMAT = '%-30s  %-16s %-26s %-16s'
+FORMAT = '%-26s %-16s %-26s %-26s'
 print(FORMAT % ('USERNAME', 'PASSWORD', 'ID', 'SITE ID'))
 for user in users:
     name = user["name"]
