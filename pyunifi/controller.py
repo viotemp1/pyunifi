@@ -242,12 +242,6 @@ class Controller(object):
         params['mac'] = target_mac
         return self._run_command(command, params, mgr)
  
-    def get_radius_users(self):
-        """Return a list of all users, with their
-        name, password, id, and site id
-        """
-        return self._api_read('rest/account')
-
     def get_device_stat(self, target_mac):
         """Gets the current state & configuration of
         the given device based on its MAC Address.
@@ -260,6 +254,12 @@ class Controller(object):
         log.debug('get_device_stat(%s)', target_mac)
         params = {"macs": [target_mac]}
         return self._api_read('stat/device/' + target_mac, params)[0]
+
+    def get_radius_users(self):
+        """Return a list of all users, with their
+        name, password, id, and site id
+        """
+        return self._api_read('rest/account')
 
     def get_switch_port_overrides(self, target_mac):
         """Gets a list of port overrides, in dictionary
