@@ -241,6 +241,12 @@ class Controller(object):
         log.debug('_mac_cmd(%s, %s)', target_mac, command)
         params['mac'] = target_mac
         return self._run_command(command, params, mgr)
+ 
+    def get_radius_users(self):
+        """Return a list of all users, with their
+        name, password, id, and site id
+        """
+        return self._api_read('rest/account')
 
     def get_device_stat(self, target_mac):
         """Gets the current state & configuration of
