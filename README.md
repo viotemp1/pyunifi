@@ -208,6 +208,9 @@ Gets the current state & configuration of the given device based on its MAC Addr
 
   - `target_mac` -- MAC address of the device
 
+### `get_radius_users(self)`
+Returns a list of all RADIUS users, with their name, password, id, and site id.
+
 ### `get_switch_port_overrides(self, target_mac)`
 Gets a list of port overrides, in dictionary format, for the given target MAC address. The dictionary contains the port_idx, portconf_id, poe_mode, & name.
 
