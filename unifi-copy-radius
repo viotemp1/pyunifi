@@ -28,18 +28,29 @@ controller_dest   = Controller(args.controller, args.username, args.password, ar
 source_users = controller_source.get_radius_users()
 dest_users = controller_dest.get_radius_users()
 
-# remove irrelevent fields
 for user in source_users:
+        # remove irrelevent fields
         user.pop("site_id", None)
         user.pop("vlan", None)
         user.pop("tunnel_type", None)
         user.pop("tunnel_medium_type", None)
+        # add status field to keep track of which
+        # users should be added or deleted or modified
+        user["status"] = "None"
 for user in dest_users:
+        # remove irrelevent fields
         user.pop("site_id", None)
         user.pop("vlan", None)
         user.pop("tunnel_type", None)
         user.pop("tunnel_medium_type", None)
+        # add status field to keep track of which
+        # users should be added or deleted or modified
+        user["status"] = "None"
 
+source_users.sort(key=lambda x: x['name'])
+print("source_users\n", json.dumps(source_users, indent=2, sort_keys=False), "\n")
+dest_users.sort(key=lambda x: x['name'])
+print("dest_users\n", json.dumps(dest_users, indent=2, sort_keys=False), "\n")
 
 unchanged_users = []
 modified_users = []
@@ -50,13 +61,39 @@ for source_user in source_users:
                         # usernames are the same
                         if source_user['x_password'] == dest_user['x_password']:
                                 # password has not changed
+                                dest_user["status"] = "unchanged"
+                                source_user["status"] = "unchanged"
                                 unchanged_users.append (source_user)
                         else:
                                 # password has changed
+                                dest_user["status"] = "modified"
+                                source_user["status"] = "modified"
                                 modified_users.append (source_user)
 
-print("source_users\n", json.dumps(source_users, indent=2, sort_keys=False), "\n")
-print("dest_users\n", json.dumps(dest_users, indent=2, sort_keys=False), "\n")
+unchanged_users.sort(key=lambda x: x['name'])
 print("unchanged_users\n", json.dumps(unchanged_users, indent=2, sort_keys=False), "\n")
+modified_users.sort(key=lambda x: x['name'])
 print("modified_users\n", json.dumps(modified_users, indent=2, sort_keys=False), "\n")
 
+added_users = []
+deleted_users = []
+
+# Any users who are not unchanged or modified
+# are unique to either the source or destination
+#
+# Added users are on the source
+for source_user in source_users:
+        if source_user['status'] == 'None':
+                source_user['status'] == 'added'
+                added_users.append(source_user)
+#
+# Deleted users are on the destination
+for dest_user in dest_users:
+        if dest_user['status'] == 'None':
+                dest_user['status'] == 'deleted'
+                deleted_users.append(dest_user)
+
+added_users.sort(key=lambda x: x['name'])
+print("added_users\n", json.dumps(added_users, indent=2, sort_keys=False), "\n")
+deleted_users.sort(key=lambda x: x['name'])
+print("deleted_users\n", json.dumps(deleted_users, indent=2, sort_keys=False), "\n")
