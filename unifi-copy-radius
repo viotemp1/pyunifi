@@ -97,3 +97,19 @@ added_users.sort(key=lambda x: x['name'])
 print("added_users\n", json.dumps(added_users, indent=2, sort_keys=False), "\n")
 deleted_users.sort(key=lambda x: x['name'])
 print("deleted_users\n", json.dumps(deleted_users, indent=2, sort_keys=False), "\n")
+
+print ()
+if (len(added_users) == 0) and (len(modified_users) == 0) and (len(deleted_users) == 0):
+        print ("No users to add, modify, or delete")
+else:
+        for user in added_users:
+                print ("adding user:", user['name'])
+                controller_dest.add_radius_user(user['name'], user['x_password'])
+
+        for user in modified_users:
+                print ("updating user:", user['name'])
+                controller_dest.update_radius_user(user['name'], user['x_password'], user['_id'])
+
+        for user in deleted_users:
+                print ("deleting user:", user['name'])
+                controller_dest.delete_radius_user(user['_id'])
