@@ -68,7 +68,13 @@ for source_user in source_users:
                                 # password has changed
                                 dest_user["status"] = "modified"
                                 source_user["status"] = "modified"
-                                modified_users.append (source_user)
+                                # Strange problem solved by temp_user.
+                                # We need the username/password of source_user
+                                temp_user['name'] = source_user['name']
+                                temp_user['x_password'] = source_user['x_password']
+                                # but: we need the id of the destination user to modify it
+                                temp_user['_id'] = dest_user['_id']
+                                modified_users.append (temp_user)
 
 unchanged_users.sort(key=lambda x: x['name'])
 print("unchanged_users\n", json.dumps(unchanged_users, indent=2, sort_keys=False), "\n")
