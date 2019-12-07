@@ -56,17 +56,20 @@ unchanged_users = []
 modified_users = []
 temp_user = {}
 
+# Compare source and destination usernames and passwords
+# to decide which users have been unchanged or modified
+#
 for source_user in source_users:
         for dest_user in dest_users:
                 if source_user['name'] == dest_user['name']:
                         # usernames are the same
                         if source_user['x_password'] == dest_user['x_password']:
-                                # password has not changed
+                                #  username and password are the same
                                 dest_user["status"] = "unchanged"
                                 source_user["status"] = "unchanged"
                                 unchanged_users.append (source_user)
                         else:
-                                # password has changed
+                                # username is the same but password has changed
                                 dest_user["status"] = "modified"
                                 source_user["status"] = "modified"
                                 # Strange problem solved by temp_user.
@@ -88,13 +91,13 @@ deleted_users = []
 # Any users who are not unchanged or modified
 # are unique to either the source or destination
 #
-# Added users are on the source
+# Unique users on the source will be added to the destination
 for source_user in source_users:
         if source_user['status'] == 'None':
                 source_user['status'] == 'added'
                 added_users.append(source_user)
 #
-# Deleted users are on the destination
+# Unique users on the destination will be deleted from the destination
 for dest_user in dest_users:
         if dest_user['status'] == 'None':
                 dest_user['status'] == 'deleted'
