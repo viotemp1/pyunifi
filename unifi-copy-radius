@@ -54,6 +54,7 @@ print("dest_users\n", json.dumps(dest_users, indent=2, sort_keys=False), "\n")
 
 unchanged_users = []
 modified_users = []
+temp_user = {}
 
 for source_user in source_users:
         for dest_user in dest_users:
