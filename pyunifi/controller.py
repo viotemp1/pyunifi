@@ -249,7 +249,7 @@ class Controller(object):
         log.debug('_mac_cmd(%s, %s)', target_mac, command)
         params['mac'] = target_mac
         return self._run_command(command, params, mgr)
- 
+
     def get_device_stat(self, target_mac):
         """Gets the current state & configuration of
         the given device based on its MAC Address.
@@ -265,30 +265,34 @@ class Controller(object):
 
     def get_radius_users(self):
         """Return a list of all users, with their
-        name, password, 24 digit user id, and 24 digit site id.
+        name, password, 24 digit user id, and 24 digit site id
         """
         return self._api_read('rest/account')
 
     def add_radius_user(self, name, password):
-        """Add a new user with this username and password.
-        :returns: user's name, password, 24 digit user id, and 24 digit site id.
+        """Add a new user with this username and password
+        :param name: new user's username
+        :param password: new user's password
+        :returns: user's name, password, 24 digit user id, and 24 digit site id
         """
         params = {'name': name, 'x_password': password}
-        return self._api_write('rest/account/', params) 
+        return self._api_write('rest/account/', params)
 
     def update_radius_user(self, name, password, id):
-        """Update a user to this new username and password.
-        Requires the user's 24 digit user id.
-        :returns: user's name, password, 24 digit user id, and 24 digit site id.
+        """Update a user to this new username and password
+        :param name: user's new username
+        :param password: user's new password
+        :param id: the user's 24 digit user id, from get_radius_users() or add_radius_user()
+        :returns: user's name, password, 24 digit user id, and 24 digit site id
         :returns: [] if no change was made
         """
         params =  {'name': name, '_id': id, 'x_password': password}
-        return self._api_update('rest/account/' + id, params) 
-    
+        return self._api_update('rest/account/' + id, params)
+
     def delete_radius_user(self, id):
-        """Delete user.
-        Requires the user's 24 digit user id.
-        :returns: [] if successful. 
+        """Delete user
+        :param id: the user's 24 digit user id, from get_radius_users() or add_radius_user()
+        :returns: [] if successful
         """
         return self._api_delete('rest/account/' + id)
 
