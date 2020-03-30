@@ -79,7 +79,8 @@ class Controller(object):
 
             if ssl_verify is False:
                 warnings.simplefilter("default", category=requests.packages.
-                                      urllib3.exceptions.InsecureRequestWarning)
+                                      urllib3.exceptions.
+                                      InsecureRequestWarning)
 
             self.session = requests.Session()
             self.session.verify = ssl_verify
@@ -102,7 +103,8 @@ class Controller(object):
 
             if ssl_verify is False:
                 warnings.simplefilter("default", category=requests.packages.
-                                      urllib3.exceptions.InsecureRequestWarning)
+                                      urllib3.exceptions.
+                                      InsecureRequestWarning)
 
             self.session = requests.Session()
             self.session.verify = ssl_verify
