@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='pyunifi',
-      version='2.19.0',
+      version='2.20.0',
       description='API for Ubiquity Networks UniFi controller',
       author='Caleb Dunn',
       author_email='finish.06@gmail.com',
