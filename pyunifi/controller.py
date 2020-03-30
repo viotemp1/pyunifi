@@ -66,28 +66,49 @@ class Controller(object):
         :param ssl_verify: Verify the controllers SSL certificate,
             can also be "path/to/custom_cert.pem"
         """
+
         self.log = logging.getLogger(__name__ + ".Controller")
-        if float(version[1:]) < 4:
-            raise APIError("%s controllers no longer supported" % version)
 
-        self.host = host
-        self.port = port
-        self.version = version
-        self.username = username
-        self.password = password
-        self.site_id = site_id
-        self.url = 'https://' + host + ':' + str(port) + '/'
-        self.ssl_verify = ssl_verify
+        if version == "unifiOS":
+            self.host = host
+            self.username = username
+            self.password = password
+            self.site_id = site_id
+            self.ssl_verify = ssl_verify
+            self.url = 'https://' + host + '/proxy/network/'
 
-        if ssl_verify is False:
-            warnings.simplefilter("default", category=requests.packages.
+            if ssl_verify is False:
+                warnings.simplefilter("default", category=requests.packages.
                                   urllib3.exceptions.InsecureRequestWarning)
 
-        self.session = requests.Session()
-        self.session.verify = ssl_verify
+            self.session = requests.Session()
+            self.session.verify = ssl_verify
 
-        self.log.debug('Controller for %s', self.url)
-        self._login()
+            self.log.debug('Controller for %s', self.url)
+            self._login()
+
+        if version[:1] == 'v': 
+            if float(version[1:]) < 4:
+                raise APIError("%s controllers no longer supported" % version)
+
+            self.host = host
+            self.port = port
+            self.version = version
+            self.username = username
+            self.password = password
+            self.site_id = site_id
+            self.url = 'https://' + host + ':' + str(port) + '/'
+            self.ssl_verify = ssl_verify
+
+            if ssl_verify is False:
+                warnings.simplefilter("default", category=requests.packages.
+                                    urllib3.exceptions.InsecureRequestWarning)
+
+            self.session = requests.Session()
+            self.session.verify = ssl_verify
+
+            self.log.debug('Controller for %s', self.url)
+            self._login()
 
     @staticmethod
     def _jsondec(data):
