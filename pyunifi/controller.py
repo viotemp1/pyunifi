@@ -79,7 +79,7 @@ class Controller(object):
 
             if ssl_verify is False:
                 warnings.simplefilter("default", category=requests.packages.
-                                  urllib3.exceptions.InsecureRequestWarning)
+                                      urllib3.exceptions.InsecureRequestWarning)
 
             self.session = requests.Session()
             self.session.verify = ssl_verify
@@ -87,7 +87,7 @@ class Controller(object):
             self.log.debug('Controller for %s', self.url)
             self._login()
 
-        if version[:1] == 'v': 
+        if version[:1] == 'v':
             if float(version[1:]) < 4:
                 raise APIError("%s controllers no longer supported" % version)
 
@@ -102,7 +102,7 @@ class Controller(object):
 
             if ssl_verify is False:
                 warnings.simplefilter("default", category=requests.packages.
-                                    urllib3.exceptions.InsecureRequestWarning)
+                                      urllib3.exceptions.InsecureRequestWarning)
 
             self.session = requests.Session()
             self.session.verify = ssl_verify
