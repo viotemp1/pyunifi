@@ -232,8 +232,17 @@ The following small utilities are bundled with the API:
 
 ### unifi-ls-clients
 
-Lists the currently active clients on the networks. Takes parameters for
-controller, username, password, controller version and site ID (UniFi >= 3.x)
+Lists the currently active clients on the networks. Can take the following parameters:
+|Parameters    	|Description   				|Default |
+| ------------- |---------------------------------------| -------|
+| -c      	| controller address 			|unifi   |
+| -u      	| controller username      		|admin   |
+| -p 		| controller password     		| 	 |
+| -b 		| controller port      			|8443	 |
+| -v 		| controller base version      		|v5	 |
+| -s 		| site ID, UniFi >=3.x only      	|default |
+| -V 		| ignore SSL certificates      		|	 |
+| -C 		| verify with ssl certificate pem file	| 	 |
 
 ```
 jb@unifi:~ % unifi-ls-clients -c localhost -u admin -p p4ssw0rd -v v3 -s default
