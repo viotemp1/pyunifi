@@ -167,8 +167,12 @@ class Controller:  # pylint: disable=R0902,R0904
 
     @retry_login
     def _delete(self, url, params=None):
-        r = self.session.delete(url, json=params)
-        return self._jsondec(r.text)
+        response = self.session.delete(url, json=params, headers=self.headers)
+
+        if response.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": response.headers["X-CSRF-Token"]}
+        
+        return self._jsondec(response.text)
 
     def _api_delete(self, url, params=None):
         return self._delete(self._api_url() + url, params)
@@ -336,7 +340,7 @@ class Controller:  # pylint: disable=R0902,R0904
         params = {'name': name, 'x_password': password}
         return self._api_write('rest/account/', params)
 
-    def update_radius_user(self, name, password, id):
+    def update_radius_user(self, name, password, user_id):
         """Update a user to this new username and password
         :param name: user's new username
         :param password: user's new password
@@ -344,15 +348,15 @@ class Controller:  # pylint: disable=R0902,R0904
         :returns: user's name, password, 24 digit user id, and 24 digit site id
         :returns: [] if no change was made
         """
-        params =  {'name': name, '_id': id, 'x_password': password}
-        return self._api_update('rest/account/' + id, params)
+        params =  {'name': name, '_id': user_id, 'x_password': password}
+        return self._api_update('rest/account/' + user_id, params)
 
-    def delete_radius_user(self, id):
+    def delete_radius_user(self, user_id):
         """Delete user
         :param id: the user's 24 digit user id, from get_radius_users() or add_radius_user()
         :returns: [] if successful
         """
-        return self._api_delete('rest/account/' + id)
+        return self._api_delete('rest/account/' + user_id)
 
     def get_switch_port_overrides(self, target_mac):
         """Gets a list of port overrides, in dictionary
