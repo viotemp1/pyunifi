@@ -165,6 +165,14 @@ class Controller:  # pylint: disable=R0902,R0904
     def _api_update(self, url, params=None):
         return self._update(self._api_url() + url, params)
 
+    @retry_login
+    def _delete(self, url, params=None):
+        r = self.session.delete(url, json=params)
+        return self._jsondec(r.text)
+
+    def _api_delete(self, url, params=None):
+        return self._delete(self._api_url() + url, params)
+
     def _login(self):
         self.log.debug("login() as %s", self.username)
         self.session = requests.Session()
@@ -312,6 +320,39 @@ class Controller:  # pylint: disable=R0902,R0904
         self.log.debug("get_device_stat(%s)", target_mac)
         params = {"macs": [target_mac]}
         return self._api_read("stat/device/" + target_mac, params)[0]
+
+    def get_radius_users(self):
+        """Return a list of all users, with their
+        name, password, 24 digit user id, and 24 digit site id
+        """
+        return self._api_read('rest/account')
+
+    def add_radius_user(self, name, password):
+        """Add a new user with this username and password
+        :param name: new user's username
+        :param password: new user's password
+        :returns: user's name, password, 24 digit user id, and 24 digit site id
+        """
+        params = {'name': name, 'x_password': password}
+        return self._api_write('rest/account/', params)
+
+    def update_radius_user(self, name, password, id):
+        """Update a user to this new username and password
+        :param name: user's new username
+        :param password: user's new password
+        :param id: the user's 24 digit user id, from get_radius_users() or add_radius_user()
+        :returns: user's name, password, 24 digit user id, and 24 digit site id
+        :returns: [] if no change was made
+        """
+        params =  {'name': name, '_id': id, 'x_password': password}
+        return self._api_update('rest/account/' + id, params)
+
+    def delete_radius_user(self, id):
+        """Delete user
+        :param id: the user's 24 digit user id, from get_radius_users() or add_radius_user()
+        :returns: [] if successful
+        """
+        return self._api_delete('rest/account/' + id)
 
     def get_switch_port_overrides(self, target_mac):
         """Gets a list of port overrides, in dictionary

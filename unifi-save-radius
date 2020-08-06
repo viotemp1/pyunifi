@@ -13,6 +13,7 @@ parser.add_argument('-v', '--version', default='v5', help='the controller base v
 parser.add_argument('-s', '--siteid', default='default', help='the site ID, UniFi >=3.x only (default "default")')
 parser.add_argument('-V', '--no-ssl-verify', default=False, action='store_true', help='Don\'t verify ssl certificates')
 parser.add_argument('-C', '--certificate', default='', help='verify with ssl certificate pem file')
+parser.add_argument('-f', '--file', default='radius-unifi.csv', help='the filename of write statistics')
 args = parser.parse_args()
 
 ssl_verify = (not args.no_ssl_verify)
@@ -22,20 +23,24 @@ if ssl_verify and len(args.certificate) > 0:
 
 c = Controller(args.controller, args.username, args.password, args.port, args.version, args.siteid, ssl_verify=ssl_verify)
 
-aps = c.get_aps()
-ap_names = dict([(ap['mac'], ap.get('name', '????')) for ap in aps])
-clients = c.get_clients()
-clients.sort(key=lambda x: -x.get('rssi', 100))
+users = c.get_radius_users()
+users.sort(key=lambda x: x['name'])
 
-FORMAT = '%-16s  %18s  %-12s  %4s  %4s  %3s  %3s'
-print(FORMAT % ('NAME', 'MAC', 'AP', 'CHAN', 'RSSI', 'RX', 'TX'))
-for client in clients:
-    ap_name = ap_names.get(client.get('ap_mac', '????'), '????')
-    name = client.get('hostname') or client.get('ip', '????')
-    rssi = client.get('rssi', '????')
-    mac = client.get('mac', '????')
-    rx = int(client.get('rx_rate', 0) / 1000)
-    tx = int(client.get('tx_rate', 0) / 1000)
-    channel = client.get('channel','????')
+#open file
+fo = open(args.file, "wb")
 
-    print(FORMAT % (name, mac, ap_name, channel, rssi, rx, tx))
+FORMAT_CSV = '%s, %s, %s, %s\n'
+fo.write(FORMAT_CSV % ('USERNAME', 'PASSWORD', 'ID', 'SITE ID'))
+for user in users:
+    name = user["name"]
+    password = user["x_password"]
+    id = user["_id"]
+    site_id = user["site_id"]
+
+    fo.write(FORMAT_CSV % (name, password, id, site_id))
+
+# Close file
+fo.close()
+
+# Print result of file
+print(open(args.file,"rb").read())

@@ -208,6 +208,29 @@ Gets the current state & configuration of the given device based on its MAC Addr
 
   - `target_mac` -- MAC address of the device
 
+### `get_radius_users(self)`
+Returns a list of all RADIUS users, name, password, 24 digit user id, and 24 digit site id.
+
+### `add_radius_user(self, name, password)`
+Add a new RADIUS user with this username and password.
+
+- `name` -- the new user's username
+- `password` -- the new user's password
+
+### `update_radius_user(self, name, password, id)`
+Update a RADIUS user to this new username and password. 
+Requires the user's 24 digit user id, which can be gotten from `get_radius_users(self)`.
+
+- `name` -- the user's new username
+- `password` -- the user's new password
+- `id` -- the user's 24 digit user id.
+
+### `delete_radius_user(self, id)`
+Delete a RADIUS user. 
+Requires the user's 24 digit user id, which can be gotten from `get_radius_users(self)`.
+
+- `id` -- the user's 24 digit user id.
+
 ### `get_switch_port_overrides(self, target_mac)`
 Gets a list of port overrides, in dictionary format, for the given target MAC address. The dictionary contains the port_idx, portconf_id, poe_mode, & name.
 
