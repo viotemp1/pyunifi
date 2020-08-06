@@ -20,18 +20,19 @@ class APIError(Exception):
 
 def retry_login(func, *args, **kwargs):
     """To reattempt login if requests exception(s) occur at time of call"""
+
     def wrapper(*args, **kwargs):
         try:
             try:
                 return func(*args, **kwargs)
-            except (requests.exceptions.RequestException,
-                    APIError) as err:
+            except (requests.exceptions.RequestException, APIError) as err:
                 log.warning("Failed to perform %s due to %s" % (func, err))
                 controller = args[0]
                 controller._login()
                 return func(*args, **kwargs)
         except Exception as err:
             raise APIError(err)
+
     return wrapper
 
 
@@ -55,8 +56,16 @@ class Controller(object):
 
     """
 
-    def __init__(self, host, username, password, port=8443,
-                 version='v5', site_id='default', ssl_verify=True):
+    def __init__(
+        self,
+        host,
+        username,
+        password,
+        port=8443,
+        version="v5",
+        site_id="default",
+        ssl_verify=True,
+    ):
         """
         :param host: the address of the controller host; IP or name
         :param username: the username to log in with
@@ -71,7 +80,7 @@ class Controller(object):
         self.log = logging.getLogger(__name__ + ".Controller")
 
         self.host = host
-        self.headers=None
+        self.headers = None
         self.version = version
         self.port = port
         self.username = username
@@ -80,45 +89,46 @@ class Controller(object):
         self.ssl_verify = ssl_verify
 
         if version == "unifiOS":
-            self.url = 'https://' + host + '/proxy/network/'
-            self.auth_url = self.url + 'api/login'
+            self.url = "https://" + host + "/proxy/network/"
+            self.auth_url = self.url + "api/login"
         elif version == "UDMP-unifiOS":
-            self.auth_url = 'https://' + host + '/api/auth/login'
-            self.url = 'https://' + host + '/proxy/network/'
-        elif version[:1] == 'v':
+            self.auth_url = "https://" + host + "/api/auth/login"
+            self.url = "https://" + host + "/proxy/network/"
+        elif version[:1] == "v":
             if float(version[1:]) < 4:
                 raise APIError("%s controllers no longer supported" % version)
-            self.url = 'https://' + host + ':' + str(port) + '/'
-            self.auth_url = self.url + 'api/login'
+            self.url = "https://" + host + ":" + str(port) + "/"
+            self.auth_url = self.url + "api/login"
         else:
             raise APIError("%s controllers no longer supported" % version)
 
         if ssl_verify is False:
             warnings.simplefilter("default", category=InsecureRequestWarning)
-        
-        self.log.debug('Controller for %s', self.url)
+
+        self.log.debug("Controller for %s", self.url)
         self._login()
+
     @staticmethod
     def _jsondec(data):
         obj = json.loads(data)
-        if 'meta' in obj:
-            if obj['meta']['rc'] != 'ok':
-                raise APIError(obj['meta']['msg'])
-        if 'data' in obj:
-            return obj['data']
+        if "meta" in obj:
+            if obj["meta"]["rc"] != "ok":
+                raise APIError(obj["meta"]["msg"])
+        if "data" in obj:
+            return obj["data"]
         else:
             return obj
 
     def _api_url(self):
-        return self.url + 'api/s/' + self.site_id + '/'
+        return self.url + "api/s/" + self.site_id + "/"
 
     @retry_login
     def _read(self, url, params=None):
         # Try block to handle the unifi server being offline.
         r = self.session.get(url, params=params, headers=self.headers)
 
-        if r.headers.get('X-CSRF-Token'):
-            self.headers = {'X-CSRF-Token': r.headers['X-CSRF-Token']}
+        if r.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": r.headers["X-CSRF-Token"]}
 
         return self._jsondec(r.text)
 
@@ -129,8 +139,8 @@ class Controller(object):
     def _write(self, url, params=None):
         r = self.session.post(url, json=params, headers=self.headers)
 
-        if r.headers.get('X-CSRF-Token'):
-            self.headers = {'X-CSRF-Token': r.headers['X-CSRF-Token']}
+        if r.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": r.headers["X-CSRF-Token"]}
 
         return self._jsondec(r.text)
 
@@ -141,8 +151,8 @@ class Controller(object):
     def _update(self, url, params=None):
         r = self.session.put(url, json=params, headers=self.headers)
 
-        if r.headers.get('X-CSRF-Token'):
-            self.headers = {'X-CSRF-Token': r.headers['X-CSRF-Token']}
+        if r.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": r.headers["X-CSRF-Token"]}
 
         return self._jsondec(r.text)
 
@@ -150,24 +160,24 @@ class Controller(object):
         return self._update(self._api_url() + url, params)
 
     def _login(self):
-        log.debug('login() as %s', self.username)
+        log.debug("login() as %s", self.username)
         self.session = requests.Session()
         self.session.verify = self.ssl_verify
 
         # XXX Why doesn't passing in the dict work?
-        params = {'username': self.username, 'password': self.password}
-        
+        params = {"username": self.username, "password": self.password}
+
         r = self.session.post(self.auth_url, json=params, headers=self.headers)
-        
-        if r.headers.get('X-CSRF-Token'):
-            self.headers = {'X-CSRF-Token': r.headers['X-CSRF-Token']}
+
+        if r.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": r.headers["X-CSRF-Token"]}
 
         if r.status_code != 200:
             raise APIError("Login failed - status code: %i" % r.status_code)
 
     def _logout(self):
-        log.debug('logout()')
-        self._api_write('logout')
+        log.debug("logout()")
+        self._api_write("logout")
         self.session.close()
 
     def switch_site(self, name):
@@ -178,19 +188,19 @@ class Controller(object):
         :return: True or APIError
         """
         for site in self.get_sites():
-            if site['desc'] == name:
-                self.site_id = site['name']
+            if site["desc"] == name:
+                self.site_id = site["name"]
                 return True
         raise APIError("No site %s found" % name)
 
     def get_alerts(self):
         """Return a list of all Alerts."""
-        return self._api_write('stat/alarm')
+        return self._api_write("stat/alarm")
 
     def get_alerts_unarchived(self):
         """Return a list of Alerts unarchived."""
-        params = {'archived': False}
-        return self._api_write('stat/alarm', params=params)
+        params = {"archived": False}
+        return self._api_write("stat/alarm", params=params)
 
     def get_statistics_last_24h(self):
         """Returns statistical data of the last 24h"""
@@ -199,23 +209,23 @@ class Controller(object):
     def get_statistics_24h(self, endtime):
         """Return statistical data last 24h from time"""
         params = {
-            'attrs': ["bytes", "num_sta", "time"],
-            'start': int(endtime - 86400) * 1000,
-            'end': int(endtime - 3600) * 1000
-            }
-        return self._api_write('stat/report/hourly.site', params)
+            "attrs": ["bytes", "num_sta", "time"],
+            "start": int(endtime - 86400) * 1000,
+            "end": int(endtime - 3600) * 1000,
+        }
+        return self._api_write("stat/report/hourly.site", params)
 
     def get_events(self):
         """Return a list of all Events."""
-        return self._api_read('stat/event')
+        return self._api_read("stat/event")
 
     def get_aps(self):
         """Return a list of all APs,
         with significant information about each.
         """
         # Set test to 0 instead of NULL
-        params = {'_depth': 2, 'test': 0}
-        return self._api_read('stat/device', params)
+        params = {"_depth": 2, "test": 0}
+        return self._api_read("stat/device", params)
 
     def get_client(self, mac):
         """Get details about a specific client"""
@@ -223,51 +233,51 @@ class Controller(object):
         # stat/user/<mac> works better than stat/sta/<mac>
         # stat/sta seems to be only active clients
         # stat/user includes known but offline clients
-        return self._api_read('stat/user/' + mac)[0]
+        return self._api_read("stat/user/" + mac)[0]
 
     def get_clients(self):
         """Return a list of all active clients,
         with significant information about each.
         """
-        return self._api_read('stat/sta')
+        return self._api_read("stat/sta")
 
     def get_users(self):
         """Return a list of all known clients,
         with significant information about each.
         """
-        return self._api_read('list/user')
+        return self._api_read("list/user")
 
     def get_user_groups(self):
         """Return a list of user groups with its rate limiting settings."""
-        return self._api_read('list/usergroup')
+        return self._api_read("list/usergroup")
 
     def get_sysinfo(self):
         """Return basic system informations."""
-        return self._api_read('stat/sysinfo')
+        return self._api_read("stat/sysinfo")
 
     def get_healthinfo(self):
         """Return health information."""
-        return self._api_read('stat/health')
+        return self._api_read("stat/health")
 
     def get_sites(self):
         """Return a list of all sites,
         with their UID and description"""
-        return self._read(self.url + 'api/self/sites')
+        return self._read(self.url + "api/self/sites")
 
     def get_wlan_conf(self):
         """Return a list of configured WLANs
         with their configuration parameters.
         """
-        return self._api_read('list/wlanconf')
+        return self._api_read("list/wlanconf")
 
-    def _run_command(self, command, params={}, mgr='stamgr'):
-        log.debug('_run_command(%s)', command)
-        params.update({'cmd': command})
-        return self._api_write('cmd/' + mgr, params=params)
+    def _run_command(self, command, params={}, mgr="stamgr"):
+        log.debug("_run_command(%s)", command)
+        params.update({"cmd": command})
+        return self._api_write("cmd/" + mgr, params=params)
 
-    def _mac_cmd(self, target_mac, command, mgr='stamgr', params={}):
-        log.debug('_mac_cmd(%s, %s)', target_mac, command)
-        params['mac'] = target_mac
+    def _mac_cmd(self, target_mac, command, mgr="stamgr", params={}):
+        log.debug("_mac_cmd(%s, %s)", target_mac, command)
+        params["mac"] = target_mac
         return self._run_command(command, params, mgr)
 
     def get_device_stat(self, target_mac):
@@ -279,9 +289,9 @@ class Controller(object):
             capabilities and configuration of the device
         :rtype: dict()
         """
-        log.debug('get_device_stat(%s)', target_mac)
+        log.debug("get_device_stat(%s)", target_mac)
         params = {"macs": [target_mac]}
-        return self._api_read('stat/device/' + target_mac, params)[0]
+        return self._api_read("stat/device/" + target_mac, params)[0]
 
     def get_switch_port_overrides(self, target_mac):
         """Gets a list of port overrides, in dictionary
@@ -295,8 +305,8 @@ class Controller(object):
             'poe_mode': str, 'name': str } ]
         :rtype: list( dict() )
         """
-        log.debug('get_switch_port_overrides(%s)', target_mac)
-        return self.get_device_stat(target_mac)['port_overrides']
+        log.debug("get_switch_port_overrides(%s)", target_mac)
+        return self.get_device_stat(target_mac)["port_overrides"]
 
     def _switch_port_power(self, target_mac, port_idx, mode):
         """Helper method to set the given PoE mode the port/switch.
@@ -313,35 +323,31 @@ class Controller(object):
         """
         # TODO: Switch operations should most likely happen in a
         # different Class, Switch.
-        log.debug('_switch_port_power(%s, %s, %s)', target_mac, port_idx, mode)
+        log.debug("_switch_port_power(%s, %s, %s)", target_mac, port_idx, mode)
         device_stat = self.get_device_stat(target_mac)
-        device_id = device_stat.get('_id')
-        overrides = device_stat.get('port_overrides')
+        device_id = device_stat.get("_id")
+        overrides = device_stat.get("port_overrides")
         found = False
         if overrides:
             for i in range(0, len(overrides)):
-                if overrides[i]['port_idx'] == port_idx:
+                if overrides[i]["port_idx"] == port_idx:
                     # Override already exists, update..
-                    overrides[i]['poe_mode'] = mode
+                    overrides[i]["poe_mode"] = mode
                     found = True
                     break
         if not found:
             # Retrieve portconf
             portconf_id = None
-            for port in device_stat['port_table']:
-                if port['port_idx'] == port_idx:
-                    portconf_id = port['portconf_id']
+            for port in device_stat["port_table"]:
+                if port["port_idx"] == port_idx:
+                    portconf_id = port["portconf_id"]
                     break
             if portconf_id is None:
                 log.error("Port ID %s could not be found in the port_table.")
-                raise APIError(
-                    'Port ID %s not found in port_table' % str(port_idx)
-                )
-            overrides.append({
-                "port_idx": port_idx,
-                "portconf_id": portconf_id,
-                "poe_mode": mode
-            })
+                raise APIError("Port ID %s not found in port_table" % str(port_idx))
+            overrides.append(
+                {"port_idx": port_idx, "portconf_id": portconf_id, "poe_mode": mode}
+            )
         # We return the device_id as it's needed by the parent method
         return {"port_overrides": overrides, "device_id": device_id}
 
@@ -356,11 +362,11 @@ class Controller(object):
         :returns: API Response which is the resulting complete port overrides
         :rtype: list( dict() )
         """
-        log.debug('switch_port_power_off(%s, %s)', target_mac, port_idx)
+        log.debug("switch_port_power_off(%s, %s)", target_mac, port_idx)
         params = self._switch_port_power(target_mac, port_idx, "off")
-        device_id = params['device_id']
-        del params['device_id']
-        return self._api_update('rest/device/' + device_id, params)
+        device_id = params["device_id"]
+        del params["device_id"]
+        return self._api_update("rest/device/" + device_id, params)
 
     def switch_port_power_on(self, target_mac, port_idx):
         """Powers On the given port on the Switch identified
@@ -373,13 +379,13 @@ class Controller(object):
         :returns: API Response which is the resulting complete port overrides
         :rtype: list( dict() )
         """
-        log.debug('switch_port_power_on(%s, %s)', target_mac, port_idx)
+        log.debug("switch_port_power_on(%s, %s)", target_mac, port_idx)
         params = self._switch_port_power(target_mac, port_idx, "auto")
-        device_id = params['device_id']
-        del params['device_id']
-        return self._api_update('rest/device/' + device_id, params)
+        device_id = params["device_id"]
+        del params["device_id"]
+        return self._api_update("rest/device/" + device_id, params)
 
-    def create_site(self, desc='desc'):
+    def create_site(self, desc="desc"):
         """Create a new site.
 
         :param desc: Name of the site to be created.
@@ -387,22 +393,21 @@ class Controller(object):
 
         # TODO: Not currently supported on UDM Pro as site support doesn't exist.
 
-        return self._run_command('add-site', params={"desc": desc},
-                                 mgr='sitemgr')
+        return self._run_command("add-site", params={"desc": desc}, mgr="sitemgr")
 
     def block_client(self, mac):
         """Add a client to the block list.
 
         :param mac: the MAC address of the client to block.
         """
-        return self._mac_cmd(mac, 'block-sta')
+        return self._mac_cmd(mac, "block-sta")
 
     def unblock_client(self, mac):
         """Remove a client from the block list.
 
         :param mac: the MAC address of the client to unblock.
         """
-        return self._mac_cmd(mac, 'unblock-sta')
+        return self._mac_cmd(mac, "unblock-sta")
 
     def disconnect_client(self, mac):
         """Disconnect a client.
@@ -412,14 +417,14 @@ class Controller(object):
 
         :param mac: the MAC address of the client to disconnect.
         """
-        return self._mac_cmd(mac, 'kick-sta')
+        return self._mac_cmd(mac, "kick-sta")
 
     def restart_ap(self, mac):
         """Restart an access point (by MAC).
 
         :param mac: the MAC address of the AP to restart.
         """
-        return self._mac_cmd(mac, 'restart', 'devmgr')
+        return self._mac_cmd(mac, "restart", "devmgr")
 
     def restart_ap_name(self, name):
         """Restart an access point (by name).
@@ -427,17 +432,17 @@ class Controller(object):
         :param name: the name address of the AP to restart.
         """
         if not name:
-            raise APIError('%s is not a valid name' % str(name))
+            raise APIError("%s is not a valid name" % str(name))
         for ap in self.get_aps():
-            if ap.get('state', 0) == 1 and ap.get('name', None) == name:
-                return self.restart_ap(ap['mac'])
+            if ap.get("state", 0) == 1 and ap.get("name", None) == name:
+                return self.restart_ap(ap["mac"])
 
     def archive_all_alerts(self):
         """Archive all Alerts"""
-        return self._run_command('archive-all-alarms', mgr='evtmgr')
+        return self._run_command("archive-all-alarms", mgr="evtmgr")
 
     # TODO: Not currently supported on UDM Pro as it now utilizes async-backups.
-    def create_backup(self, days='0'):
+    def create_backup(self, days="0"):
         """Ask controller to create a backup archive file
 
         ..warning:
@@ -448,11 +453,11 @@ class Controller(object):
             '-1' backup all metrics. '0' backup only the configuration.
         :return: URL path to backup file
         """
-        res = self._run_command('backup', mgr='system', params={'days': days})
-        return res[0]['url']
+        res = self._run_command("backup", mgr="system", params={"days": days})
+        return res[0]["url"]
 
     # TODO: Not currently supported on UDM Pro as it now utilizes async-backups.
-    def get_backup(self, download_path=None, target_file='unifi-backup.unf'):
+    def get_backup(self, download_path=None, target_file="unifi-backup.unf"):
         """
         :param download_path: path to backup; if None is given
             one will be created
@@ -463,11 +468,18 @@ class Controller(object):
             download_path = self.create_backup()
 
         r = self.session.get(self.url + download_path, stream=True)
-        with open(target_file, 'wb') as _backfh:
+        with open(target_file, "wb") as _backfh:
             return shutil.copyfileobj(r.raw, _backfh)
 
-    def authorize_guest(self, guest_mac, minutes, up_bandwidth=None,
-                        down_bandwidth=None, byte_quota=None, ap_mac=None):
+    def authorize_guest(
+        self,
+        guest_mac,
+        minutes,
+        up_bandwidth=None,
+        down_bandwidth=None,
+        byte_quota=None,
+        ap_mac=None,
+    ):
         """
         Authorize a guest based on his MAC address.
 
@@ -478,17 +490,17 @@ class Controller(object):
         :param byte_quota: quantity of bytes allowed in MB
         :param ap_mac: access point MAC address
         """
-        cmd = 'authorize-guest'
-        params = {'mac': guest_mac, 'minutes': minutes}
+        cmd = "authorize-guest"
+        params = {"mac": guest_mac, "minutes": minutes}
 
         if up_bandwidth:
-            params['up'] = up_bandwidth
+            params["up"] = up_bandwidth
         if down_bandwidth:
-            params['down'] = down_bandwidth
+            params["down"] = down_bandwidth
         if byte_quota:
-            params['bytes'] = byte_quota
+            params["bytes"] = byte_quota
         if ap_mac:
-            params['ap_mac'] = ap_mac
+            params["ap_mac"] = ap_mac
         return self._run_command(cmd, params=params)
 
     def unauthorize_guest(self, guest_mac):
@@ -497,12 +509,11 @@ class Controller(object):
 
         :param guest_mac: the guest MAC address: 'aa:bb:cc:dd:ee:ff'
         """
-        cmd = 'unauthorize-guest'
-        params = {'mac': guest_mac}
+        cmd = "unauthorize-guest"
+        params = {"mac": guest_mac}
         return self._run_command(cmd, params=params)
 
-    def get_firmware(self, cached=True, available=True,
-                     known=False, site=False):
+    def get_firmware(self, cached=True, available=True, known=False, site=False):
         """
         Return a list of available/cached firmware versions
 
@@ -514,14 +525,14 @@ class Controller(object):
         """
         res = []
         if cached:
-            res.extend(self._run_command('list-cached', mgr='firmware'))
+            res.extend(self._run_command("list-cached", mgr="firmware"))
         if available:
-            res.extend(self._run_command('list-available', mgr='firmware'))
+            res.extend(self._run_command("list-available", mgr="firmware"))
 
         if known:
-            res = [fw for fw in res if fw['knownDevice']]
+            res = [fw for fw in res if fw["knownDevice"]]
         if site:
-            res = [fw for fw in res if fw['siteDevice']]
+            res = [fw for fw in res if fw["siteDevice"]]
         return res
 
     def cache_firmware(self, version, device):
@@ -536,8 +547,8 @@ class Controller(object):
         :return: True/False
         """
         return self._run_command(
-            'download', mgr='firmware',
-            params={'device': device, 'version': version})[0]['result']
+            "download", mgr="firmware", params={"device": device, "version": version}
+        )[0]["result"]
 
     def remove_firmware(self, version, device):
         """
@@ -551,12 +562,12 @@ class Controller(object):
         :return: True/false
         """
         return self._run_command(
-            'remove', mgr='firmware',
-            params={'device': device, 'version': version})[0]['result']
+            "remove", mgr="firmware", params={"device": device, "version": version}
+        )[0]["result"]
 
     def get_tag(self):
         """Get all tags and their member MACs"""
-        return self._api_read('rest/tag')
+        return self._api_read("rest/tag")
 
     def upgrade_device(self, mac, version):
         """
@@ -564,15 +575,16 @@ class Controller(object):
         :param mac: MAC of dev
         :param version: version to upgrade to
         """
-        self._mac_cmd(mac, 'upgrade', mgr='devmgr',
-                      params={'upgrade_to_firmware': version})
+        self._mac_cmd(
+            mac, "upgrade", mgr="devmgr", params={"upgrade_to_firmware": version}
+        )
 
     def provision(self, mac):
         """
         Force provisioning of a device
         :param mac: MAC of device
         """
-        self._mac_cmd(mac, 'force-provision', mgr='devmgr')
+        self._mac_cmd(mac, "force-provision", mgr="devmgr")
 
     def get_setting(self, section=None, super=False):
         """
@@ -583,17 +595,19 @@ class Controller(object):
         :return: {section:settings}
         """
         res = {}
-        settings = self._api_read('get/setting')
+        settings = self._api_read("get/setting")
         if section and not isinstance(section, (list, tuple)):
             section = [section]
 
         for s in settings:
-            s_sect = s['key']
-            if (super and 'site_id' in s) or \
-               (not super and 'site_id' not in s) or \
-               (section and s_sect not in section):
+            s_sect = s["key"]
+            if (
+                (super and "site_id" in s)
+                or (not super and "site_id" not in s)
+                or (section and s_sect not in section)
+            ):
                 continue
-            for k in ('_id', 'site_id', 'key'):
+            for k in ("_id", "site_id", "key"):
                 s.pop(k, None)
             res[s_sect] = s
         return res
@@ -607,7 +621,7 @@ class Controller(object):
         """
         res = []
         for sect, setting in settings.items():
-            res.extend(self._api_write('set/setting/' + sect, setting))
+            res.extend(self._api_write("set/setting/" + sect, setting))
         return res
 
     def update_user_group(self, group_id, down_kbps=-1, up_kbps=-1):
@@ -625,13 +639,16 @@ class Controller(object):
         for group in groups:
             if group["_id"] == group_id:
                 # Apply setting change
-                res = self._api_update("rest/usergroup/{0}".format(group_id), {
-                    "qos_rate_max_down": down_kbps,
-                    "qos_rate_max_up": up_kbps,
-                    "name": group["name"],
-                    "_id": group_id,
-                    "site_id": self.site_id
-                })
+                res = self._api_update(
+                    "rest/usergroup/{0}".format(group_id),
+                    {
+                        "qos_rate_max_down": down_kbps,
+                        "qos_rate_max_up": up_kbps,
+                        "name": group["name"],
+                        "_id": group_id,
+                        "site_id": self.site_id,
+                    },
+                )
                 return res
 
         raise ValueError("Group ID {0} is not valid.".format(group_id))
@@ -642,11 +659,19 @@ class Controller(object):
         :param mac: The MAC of the client to rename
         :param alias: The alias to set
         """
-        client = self.get_client(mac)['_id']
-        return self._api_update('rest/user/' + client, {'name': alias})
+        client = self.get_client(mac)["_id"]
+        return self._api_update("rest/user/" + client, {"name": alias})
 
-    def create_voucher(self, number, quota, expire, up_bandwidth=None,
-                       down_bandwidth=None, byte_quota=None, note=None):
+    def create_voucher(
+        self,
+        number,
+        quota,
+        expire,
+        up_bandwidth=None,
+        down_bandwidth=None,
+        byte_quota=None,
+        note=None,
+    ):
         """
         Create voucher for guests.
 
@@ -658,20 +683,25 @@ class Controller(object):
         :param byte_quota: quantity of bytes allowed in MB
         :param note: description
         """
-        cmd = 'create-voucher'
-        params = {'n': number, 'quota': quota, 'expire': 'custom',
-                  'expire_number': expire, 'expire_unit': 1}
+        cmd = "create-voucher"
+        params = {
+            "n": number,
+            "quota": quota,
+            "expire": "custom",
+            "expire_number": expire,
+            "expire_unit": 1,
+        }
 
         if up_bandwidth:
-            params['up'] = up_bandwidth
+            params["up"] = up_bandwidth
         if down_bandwidth:
-            params['down'] = down_bandwidth
+            params["down"] = down_bandwidth
         if byte_quota:
-            params['bytes'] = byte_quota
+            params["bytes"] = byte_quota
         if note:
-            params['note'] = note
-        res = self._run_command(cmd, mgr='hotspot', params=params)
-        return self.list_vouchers(create_time=res[0]['create_time'])
+            params["note"] = note
+        res = self._run_command(cmd, mgr="hotspot", params=params)
+        return self.list_vouchers(create_time=res[0]["create_time"])
 
     def list_vouchers(self, **filter):
         """
@@ -681,11 +711,11 @@ class Controller(object):
                         used, note, status_expires, status, ...
 
         """
-        if 'code' in filter:
-            filter['code'] = filter['code'].replace('-', '')
+        if "code" in filter:
+            filter["code"] = filter["code"].replace("-", "")
 
         vouchers = []
-        for voucher in self._api_read('stat/voucher'):
+        for voucher in self._api_read("stat/voucher"):
             voucher_match = True
             for key, val in filter.items():
                 voucher_match &= voucher.get(key) == val
@@ -699,6 +729,6 @@ class Controller(object):
 
         :param id: id of voucher
         """
-        cmd = 'delete-voucher'
-        params = {'_id': id}
-        self._run_command(cmd, mgr='hotspot', params=params)
+        cmd = "delete-voucher"
+        params = {"_id": id}
+        self._run_command(cmd, mgr="hotspot", params=params)
