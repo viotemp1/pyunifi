@@ -4,6 +4,7 @@ import requests
 import shutil
 import time
 import warnings
+from urllib3.exceptions import InsecureRequestWarning
 
 
 """For testing purposes:
@@ -69,49 +70,34 @@ class Controller(object):
 
         self.log = logging.getLogger(__name__ + ".Controller")
 
+        self.host = host
+        self.headers=None
+        self.version = version
+        self.port = port
+        self.username = username
+        self.password = password
+        self.site_id = site_id
+        self.ssl_verify = ssl_verify
+
         if version == "unifiOS":
-            self.host = host
-            self.username = username
-            self.password = password
-            self.site_id = site_id
-            self.ssl_verify = ssl_verify
             self.url = 'https://' + host + '/proxy/network/'
-
-            if ssl_verify is False:
-                warnings.simplefilter("default", category=requests.packages.
-                                      urllib3.exceptions.
-                                      InsecureRequestWarning)
-
-            self.session = requests.Session()
-            self.session.verify = ssl_verify
-
-            self.log.debug('Controller for %s', self.url)
-            self._login()
-
-        if version[:1] == 'v':
+            self.auth_url = self.url + 'api/login'
+        elif version == "UDMP-unifiOS":
+            self.auth_url = 'https://' + host + '/api/auth/login'
+            self.url = 'https://' + host + '/proxy/network/'
+        elif version[:1] == 'v':
             if float(version[1:]) < 4:
                 raise APIError("%s controllers no longer supported" % version)
-
-            self.host = host
-            self.port = port
-            self.version = version
-            self.username = username
-            self.password = password
-            self.site_id = site_id
             self.url = 'https://' + host + ':' + str(port) + '/'
-            self.ssl_verify = ssl_verify
+            self.auth_url = self.url + 'api/login'
+        else:
+            raise APIError("%s controllers no longer supported" % version)
 
-            if ssl_verify is False:
-                warnings.simplefilter("default", category=requests.packages.
-                                      urllib3.exceptions.
-                                      InsecureRequestWarning)
-
-            self.session = requests.Session()
-            self.session.verify = ssl_verify
-
-            self.log.debug('Controller for %s', self.url)
-            self._login()
-
+        if ssl_verify is False:
+            warnings.simplefilter("default", category=InsecureRequestWarning)
+        
+        self.log.debug('Controller for %s', self.url)
+        self._login()
     @staticmethod
     def _jsondec(data):
         obj = json.loads(data)
@@ -129,7 +115,11 @@ class Controller(object):
     @retry_login
     def _read(self, url, params=None):
         # Try block to handle the unifi server being offline.
-        r = self.session.get(url, params=params)
+        r = self.session.get(url, params=params, headers=self.headers)
+
+        if r.headers.get('X-CSRF-Token'):
+            self.headers = {'X-CSRF-Token': r.headers['X-CSRF-Token']}
+
         return self._jsondec(r.text)
 
     def _api_read(self, url, params=None):
@@ -137,7 +127,11 @@ class Controller(object):
 
     @retry_login
     def _write(self, url, params=None):
-        r = self.session.post(url, json=params)
+        r = self.session.post(url, json=params, headers=self.headers)
+
+        if r.headers.get('X-CSRF-Token'):
+            self.headers = {'X-CSRF-Token': r.headers['X-CSRF-Token']}
+
         return self._jsondec(r.text)
 
     def _api_write(self, url, params=None):
@@ -145,7 +139,11 @@ class Controller(object):
 
     @retry_login
     def _update(self, url, params=None):
-        r = self.session.put(url, json=params)
+        r = self.session.put(url, json=params, headers=self.headers)
+
+        if r.headers.get('X-CSRF-Token'):
+            self.headers = {'X-CSRF-Token': r.headers['X-CSRF-Token']}
+
         return self._jsondec(r.text)
 
     def _api_update(self, url, params=None):
@@ -153,18 +151,24 @@ class Controller(object):
 
     def _login(self):
         log.debug('login() as %s', self.username)
+        self.session = requests.Session()
+        self.session.verify = self.ssl_verify
 
         # XXX Why doesn't passing in the dict work?
         params = {'username': self.username, 'password': self.password}
-        login_url = self.url + 'api/login'
+        
+        r = self.session.post(self.auth_url, json=params, headers=self.headers)
+        
+        if r.headers.get('X-CSRF-Token'):
+            self.headers = {'X-CSRF-Token': r.headers['X-CSRF-Token']}
 
-        r = self.session.post(login_url, json=params)
         if r.status_code != 200:
             raise APIError("Login failed - status code: %i" % r.status_code)
 
     def _logout(self):
         log.debug('logout()')
         self._api_write('logout')
+        self.session.close()
 
     def switch_site(self, name):
         """
@@ -185,7 +189,8 @@ class Controller(object):
 
     def get_alerts_unarchived(self):
         """Return a list of Alerts unarchived."""
-        return self._api_write('stat/alarm', params={'archived': False})
+        params = {'archived': False}
+        return self._api_write('stat/alarm', params=params)
 
     def get_statistics_last_24h(self):
         """Returns statistical data of the last 24h"""
@@ -193,12 +198,12 @@ class Controller(object):
 
     def get_statistics_24h(self, endtime):
         """Return statistical data last 24h from time"""
-
         params = {
             'attrs': ["bytes", "num_sta", "time"],
             'start': int(endtime - 86400) * 1000,
-            'end': int(endtime - 3600) * 1000}
-        return self._write(self._api_url() + 'stat/report/hourly.site', params)
+            'end': int(endtime - 3600) * 1000
+            }
+        return self._api_write('stat/report/hourly.site', params)
 
     def get_events(self):
         """Return a list of all Events."""
@@ -258,7 +263,7 @@ class Controller(object):
     def _run_command(self, command, params={}, mgr='stamgr'):
         log.debug('_run_command(%s)', command)
         params.update({'cmd': command})
-        return self._write(self._api_url() + 'cmd/' + mgr, params=params)
+        return self._api_write('cmd/' + mgr, params=params)
 
     def _mac_cmd(self, target_mac, command, mgr='stamgr', params={}):
         log.debug('_mac_cmd(%s, %s)', target_mac, command)
@@ -310,15 +315,16 @@ class Controller(object):
         # different Class, Switch.
         log.debug('_switch_port_power(%s, %s, %s)', target_mac, port_idx, mode)
         device_stat = self.get_device_stat(target_mac)
-        device_id = device_stat['_id']
-        overrides = device_stat['port_overrides']
+        device_id = device_stat.get('_id')
+        overrides = device_stat.get('port_overrides')
         found = False
-        for i in range(0, len(overrides)):
-            if overrides[i]['port_idx'] == port_idx:
-                # Override already exists, update..
-                overrides[i]['poe_mode'] = mode
-                found = True
-                break
+        if overrides:
+            for i in range(0, len(overrides)):
+                if overrides[i]['port_idx'] == port_idx:
+                    # Override already exists, update..
+                    overrides[i]['poe_mode'] = mode
+                    found = True
+                    break
         if not found:
             # Retrieve portconf
             portconf_id = None
@@ -378,6 +384,9 @@ class Controller(object):
 
         :param desc: Name of the site to be created.
         """
+
+        # TODO: Not currently supported on UDM Pro as site support doesn't exist.
+
         return self._run_command('add-site', params={"desc": desc},
                                  mgr='sitemgr')
 
@@ -427,6 +436,7 @@ class Controller(object):
         """Archive all Alerts"""
         return self._run_command('archive-all-alarms', mgr='evtmgr')
 
+    # TODO: Not currently supported on UDM Pro as it now utilizes async-backups.
     def create_backup(self, days='0'):
         """Ask controller to create a backup archive file
 
@@ -441,6 +451,7 @@ class Controller(object):
         res = self._run_command('backup', mgr='system', params={'days': days})
         return res[0]['url']
 
+    # TODO: Not currently supported on UDM Pro as it now utilizes async-backups.
     def get_backup(self, download_path=None, target_file='unifi-backup.unf'):
         """
         :param download_path: path to backup; if None is given
