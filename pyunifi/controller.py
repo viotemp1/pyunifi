@@ -1,24 +1,28 @@
-import json
-import logging
-import requests
+"""
+Python package to interact with UniFi Controller
+"""
 import shutil
 import time
 import warnings
+import json
+import logging
+
+import requests
 from urllib3.exceptions import InsecureRequestWarning
 
 
 """For testing purposes:
 logging.basicConfig(filename='pyunifi.log', level=logging.WARN,
                     format='%(asctime)s %(message)s')
-"""
-log = logging.getLogger(__name__)
+"""  # pylint: disable=W0105
+CONS_LOG = logging.getLogger(__name__)
 
 
 class APIError(Exception):
-    pass
+    """API Error exceptions"""
 
 
-def retry_login(func, *args, **kwargs):
+def retry_login(func, *args, **kwargs):  # pylint: disable=w0613
     """To reattempt login if requests exception(s) occur at time of call"""
 
     def wrapper(*args, **kwargs):
@@ -26,9 +30,9 @@ def retry_login(func, *args, **kwargs):
             try:
                 return func(*args, **kwargs)
             except (requests.exceptions.RequestException, APIError) as err:
-                log.warning("Failed to perform %s due to %s" % (func, err))
+                CONS_LOG.warning("Failed to perform %s due to %s", func, err)
                 controller = args[0]
-                controller._login()
+                controller._login()  # pylint: disable=w0212
                 return func(*args, **kwargs)
         except Exception as err:
             raise APIError(err)
@@ -36,7 +40,7 @@ def retry_login(func, *args, **kwargs):
     return wrapper
 
 
-class Controller(object):
+class Controller:  # pylint: disable=R0902,R0904
 
     """Interact with a UniFi controller.
 
@@ -56,15 +60,15 @@ class Controller(object):
 
     """
 
-    def __init__(
-        self,
-        host,
-        username,
-        password,
-        port=8443,
-        version="v5",
-        site_id="default",
-        ssl_verify=True,
+    def __init__(  # pylint: disable=r0913
+            self,
+            host,
+            username,
+            password,
+            port=8443,
+            version="v5",
+            site_id="default",
+            ssl_verify=True,
     ):
         """
         :param host: the address of the controller host; IP or name
@@ -115,9 +119,11 @@ class Controller(object):
             if obj["meta"]["rc"] != "ok":
                 raise APIError(obj["meta"]["msg"])
         if "data" in obj:
-            return obj["data"]
+            result = obj["data"]
         else:
-            return obj
+            result = obj
+
+        return result
 
     def _api_url(self):
         return self.url + "api/s/" + self.site_id + "/"
@@ -125,58 +131,59 @@ class Controller(object):
     @retry_login
     def _read(self, url, params=None):
         # Try block to handle the unifi server being offline.
-        r = self.session.get(url, params=params, headers=self.headers)
+        response = self.session.get(url, params=params, headers=self.headers)
 
-        if r.headers.get("X-CSRF-Token"):
-            self.headers = {"X-CSRF-Token": r.headers["X-CSRF-Token"]}
+        if response.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": response.headers["X-CSRF-Token"]}
 
-        return self._jsondec(r.text)
+        return self._jsondec(response.text)
 
     def _api_read(self, url, params=None):
         return self._read(self._api_url() + url, params)
 
     @retry_login
     def _write(self, url, params=None):
-        r = self.session.post(url, json=params, headers=self.headers)
+        response = self.session.post(url, json=params, headers=self.headers)
 
-        if r.headers.get("X-CSRF-Token"):
-            self.headers = {"X-CSRF-Token": r.headers["X-CSRF-Token"]}
+        if response.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": response.headers["X-CSRF-Token"]}
 
-        return self._jsondec(r.text)
+        return self._jsondec(response.text)
 
     def _api_write(self, url, params=None):
         return self._write(self._api_url() + url, params)
 
     @retry_login
     def _update(self, url, params=None):
-        r = self.session.put(url, json=params, headers=self.headers)
+        response = self.session.put(url, json=params, headers=self.headers)
 
-        if r.headers.get("X-CSRF-Token"):
-            self.headers = {"X-CSRF-Token": r.headers["X-CSRF-Token"]}
+        if response.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": response.headers["X-CSRF-Token"]}
 
-        return self._jsondec(r.text)
+        return self._jsondec(response.text)
 
     def _api_update(self, url, params=None):
         return self._update(self._api_url() + url, params)
 
     def _login(self):
-        log.debug("login() as %s", self.username)
+        self.log.debug("login() as %s", self.username)
         self.session = requests.Session()
         self.session.verify = self.ssl_verify
 
-        # XXX Why doesn't passing in the dict work?
-        params = {"username": self.username, "password": self.password}
+        response = self.session.post(
+            self.auth_url,
+            json={"username": self.username, "password": self.password},
+            headers=self.headers,
+        )
 
-        r = self.session.post(self.auth_url, json=params, headers=self.headers)
+        if response.headers.get("X-CSRF-Token"):
+            self.headers = {"X-CSRF-Token": response.headers["X-CSRF-Token"]}
 
-        if r.headers.get("X-CSRF-Token"):
-            self.headers = {"X-CSRF-Token": r.headers["X-CSRF-Token"]}
-
-        if r.status_code != 200:
-            raise APIError("Login failed - status code: %i" % r.status_code)
+        if response.status_code != 200:
+            raise APIError("Login failed - status code: %i" % response.status_code)
 
     def _logout(self):
-        log.debug("logout()")
+        self.log.debug("logout()")
         self._api_write("logout")
         self.session.close()
 
@@ -270,13 +277,17 @@ class Controller(object):
         """
         return self._api_read("list/wlanconf")
 
-    def _run_command(self, command, params={}, mgr="stamgr"):
-        log.debug("_run_command(%s)", command)
+    def _run_command(self, command, params=None, mgr="stamgr"):
+        if params is None:
+            params = {}
+        self.log.debug("_run_command(%s)", command)
         params.update({"cmd": command})
         return self._api_write("cmd/" + mgr, params=params)
 
-    def _mac_cmd(self, target_mac, command, mgr="stamgr", params={}):
-        log.debug("_mac_cmd(%s, %s)", target_mac, command)
+    def _mac_cmd(self, target_mac, command, mgr="stamgr", params=None):
+        if params is None:
+            params = {}
+        self.log.debug("_mac_cmd(%s, %s)", target_mac, command)
         params["mac"] = target_mac
         return self._run_command(command, params, mgr)
 
@@ -289,7 +300,7 @@ class Controller(object):
             capabilities and configuration of the device
         :rtype: dict()
         """
-        log.debug("get_device_stat(%s)", target_mac)
+        self.log.debug("get_device_stat(%s)", target_mac)
         params = {"macs": [target_mac]}
         return self._api_read("stat/device/" + target_mac, params)[0]
 
@@ -305,7 +316,7 @@ class Controller(object):
             'poe_mode': str, 'name': str } ]
         :rtype: list( dict() )
         """
-        log.debug("get_switch_port_overrides(%s)", target_mac)
+        self.log.debug("get_switch_port_overrides(%s)", target_mac)
         return self.get_device_stat(target_mac)["port_overrides"]
 
     def _switch_port_power(self, target_mac, port_idx, mode):
@@ -323,13 +334,13 @@ class Controller(object):
         """
         # TODO: Switch operations should most likely happen in a
         # different Class, Switch.
-        log.debug("_switch_port_power(%s, %s, %s)", target_mac, port_idx, mode)
+        self.log.debug("_switch_port_power(%s, %s, %s)", target_mac, port_idx, mode)
         device_stat = self.get_device_stat(target_mac)
         device_id = device_stat.get("_id")
         overrides = device_stat.get("port_overrides")
         found = False
         if overrides:
-            for i in range(0, len(overrides)):
+            for i in overrides:
                 if overrides[i]["port_idx"] == port_idx:
                     # Override already exists, update..
                     overrides[i]["poe_mode"] = mode
@@ -343,7 +354,7 @@ class Controller(object):
                     portconf_id = port["portconf_id"]
                     break
             if portconf_id is None:
-                log.error("Port ID %s could not be found in the port_table.")
+                self.log.error("Port ID %s could not be found in the port_table.")
                 raise APIError("Port ID %s not found in port_table" % str(port_idx))
             overrides.append(
                 {"port_idx": port_idx, "portconf_id": portconf_id, "poe_mode": mode}
@@ -362,7 +373,7 @@ class Controller(object):
         :returns: API Response which is the resulting complete port overrides
         :rtype: list( dict() )
         """
-        log.debug("switch_port_power_off(%s, %s)", target_mac, port_idx)
+        self.log.debug("switch_port_power_off(%s, %s)", target_mac, port_idx)
         params = self._switch_port_power(target_mac, port_idx, "off")
         device_id = params["device_id"]
         del params["device_id"]
@@ -379,7 +390,7 @@ class Controller(object):
         :returns: API Response which is the resulting complete port overrides
         :rtype: list( dict() )
         """
-        log.debug("switch_port_power_on(%s, %s)", target_mac, port_idx)
+        self.log.debug("switch_port_power_on(%s, %s)", target_mac, port_idx)
         params = self._switch_port_power(target_mac, port_idx, "auto")
         device_id = params["device_id"]
         del params["device_id"]
@@ -392,6 +403,8 @@ class Controller(object):
         """
 
         # TODO: Not currently supported on UDM Pro as site support doesn't exist.
+        if self.version == "UDMP-unifiOS":
+            raise APIError("Controller version not supported: %s" % self.version)
 
         return self._run_command("add-site", params={"desc": desc}, mgr="sitemgr")
 
@@ -433,9 +446,13 @@ class Controller(object):
         """
         if not name:
             raise APIError("%s is not a valid name" % str(name))
-        for ap in self.get_aps():
-            if ap.get("state", 0) == 1 and ap.get("name", None) == name:
-                return self.restart_ap(ap["mac"])
+        for access_point in self.get_aps():
+            if (
+                    access_point.get("state", 0) == 1
+                    and access_point.get("name", None) == name
+            ):
+                result = self.restart_ap(access_point["mac"])
+        return result
 
     def archive_all_alerts(self):
         """Archive all Alerts"""
@@ -453,6 +470,9 @@ class Controller(object):
             '-1' backup all metrics. '0' backup only the configuration.
         :return: URL path to backup file
         """
+        if self.version == "UDMP-unifiOS":
+            raise APIError("Controller version not supported: %s" % self.version)
+
         res = self._run_command("backup", mgr="system", params={"days": days})
         return res[0]["url"]
 
@@ -464,21 +484,28 @@ class Controller(object):
         :param target_file: Filename or full path to download the
             backup archive to, should have .unf extension for restore.
         """
+        if self.version == "UDMP-unifiOS":
+            raise APIError("Controller version not supported: %s" % self.version)
+
         if not download_path:
             download_path = self.create_backup()
 
-        r = self.session.get(self.url + download_path, stream=True)
-        with open(target_file, "wb") as _backfh:
-            return shutil.copyfileobj(r.raw, _backfh)
+        response = self.session.get(self.url + download_path, stream=True)
 
-    def authorize_guest(
-        self,
-        guest_mac,
-        minutes,
-        up_bandwidth=None,
-        down_bandwidth=None,
-        byte_quota=None,
-        ap_mac=None,
+        if response != 200:
+            raise APIError("API backup failed: %i" % response.status_code)
+
+        with open(target_file, "wb") as _backfh:
+            return shutil.copyfileobj(response.raw, _backfh)
+
+    def authorize_guest(  # pylint: disable=R0913
+            self,
+            guest_mac,
+            minutes,
+            up_bandwidth=None,
+            down_bandwidth=None,
+            byte_quota=None,
+            ap_mac=None,
     ):
         """
         Authorize a guest based on his MAC address.
@@ -586,30 +613,30 @@ class Controller(object):
         """
         self._mac_cmd(mac, "force-provision", mgr="devmgr")
 
-    def get_setting(self, section=None, super=False):
+    def get_setting(self, section=None, cs_settings=False):
         """
         Return settings for this site or controller
 
-        :param super: Return only controller-wide settings
+        :param cs_settings: Return only controller-wide settings
         :param section: Only return this/these section(s)
         :return: {section:settings}
         """
         res = {}
-        settings = self._api_read("get/setting")
+        all_settings = self._api_read("get/setting")
         if section and not isinstance(section, (list, tuple)):
             section = [section]
 
-        for s in settings:
-            s_sect = s["key"]
+        for setting in all_settings:
+            s_sect = setting["key"]
             if (
-                (super and "site_id" in s)
-                or (not super and "site_id" not in s)
-                or (section and s_sect not in section)
+                    (cs_settings and "site_id" in setting)  # pylint: disable=R0916
+                    or (not cs_settings and "site_id" not in setting)
+                    or (section and s_sect not in section)
             ):
                 continue
             for k in ("_id", "site_id", "key"):
-                s.pop(k, None)
-            res[s_sect] = s
+                setting.pop(k, None)
+            res[s_sect] = setting
         return res
 
     def update_setting(self, settings):
@@ -662,15 +689,15 @@ class Controller(object):
         client = self.get_client(mac)["_id"]
         return self._api_update("rest/user/" + client, {"name": alias})
 
-    def create_voucher(
-        self,
-        number,
-        quota,
-        expire,
-        up_bandwidth=None,
-        down_bandwidth=None,
-        byte_quota=None,
-        note=None,
+    def create_voucher(  # pylint: disable=R0913
+            self,
+            number,
+            quota,
+            expire,
+            up_bandwidth=None,
+            down_bandwidth=None,
+            byte_quota=None,
+            note=None,
     ):
         """
         Create voucher for guests.
@@ -703,32 +730,32 @@ class Controller(object):
         res = self._run_command(cmd, mgr="hotspot", params=params)
         return self.list_vouchers(create_time=res[0]["create_time"])
 
-    def list_vouchers(self, **filter):
+    def list_vouchers(self, **filter_voucher):
         """
         Get list of vouchers
 
-        :param filter:  Filter vouchers by create_time, code, quota,
+        :param filter_voucher:  Filter vouchers by create_time, code, quota,
                         used, note, status_expires, status, ...
 
         """
-        if "code" in filter:
-            filter["code"] = filter["code"].replace("-", "")
+        if "code" in filter_voucher:
+            filter_voucher["code"] = filter_voucher["code"].replace("-", "")
 
         vouchers = []
         for voucher in self._api_read("stat/voucher"):
             voucher_match = True
-            for key, val in filter.items():
+            for key, val in filter_voucher.items():
                 voucher_match &= voucher.get(key) == val
             if voucher_match:
                 vouchers.append(voucher)
         return vouchers
 
-    def delete_voucher(self, id):
+    def delete_voucher(self, voucher_id):
         """
         Delete / revoke voucher
 
         :param id: id of voucher
         """
         cmd = "delete-voucher"
-        params = {"_id": id}
+        params = {"_id": voucher_id}
         self._run_command(cmd, mgr="hotspot", params=params)
