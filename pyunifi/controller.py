@@ -180,7 +180,9 @@ class Controller:  # pylint: disable=R0902,R0904
             self.headers = {"X-CSRF-Token": response.headers["X-CSRF-Token"]}
 
         if response.status_code != 200:
-            raise APIError("Login failed - status code: %i" % response.status_code)
+            raise APIError(
+                "Login failed - status code: %i" % response.status_code
+                )
 
     def _logout(self):
         self.log.debug("logout()")
@@ -195,9 +197,11 @@ class Controller:  # pylint: disable=R0902,R0904
         :return: True or APIError
         """
 
-        # TODO: Not currently supported on UDM Pro as site support doesn't exist.
+        # TODO: Not currently supported on UDMP as site support doesn't exist.
         if self.version == "UDMP-unifiOS":
-            raise APIError("Controller version not supported: %s" % self.version)
+            raise APIError(
+                "Controller version not supported: %s" % self.version
+                )
 
         for site in self.get_sites():
             if site["desc"] == name:
@@ -339,7 +343,9 @@ class Controller:  # pylint: disable=R0902,R0904
         """
         # TODO: Switch operations should most likely happen in a
         # different Class, Switch.
-        self.log.debug("_switch_port_power(%s, %s, %s)", target_mac, port_idx, mode)
+        self.log.debug(
+            "_switch_port_power(%s, %s, %s)", target_mac, port_idx, mode
+            )
         device_stat = self.get_device_stat(target_mac)
         device_id = device_stat.get("_id")
         overrides = device_stat.get("port_overrides")
@@ -359,10 +365,15 @@ class Controller:  # pylint: disable=R0902,R0904
                     portconf_id = port["portconf_id"]
                     break
             if portconf_id is None:
-                self.log.error("Port ID %s could not be found in the port_table.")
-                raise APIError("Port ID %s not found in port_table" % str(port_idx))
+                raise APIError(
+                    "Port ID %s not found in port_table" % str(port_idx)
+                    )
             overrides.append(
-                {"port_idx": port_idx, "portconf_id": portconf_id, "poe_mode": mode}
+                {
+                    "port_idx": port_idx,
+                    "portconf_id": portconf_id,
+                    "poe_mode": mode
+                    }
             )
         # We return the device_id as it's needed by the parent method
         return {"port_overrides": overrides, "device_id": device_id}
@@ -407,11 +418,17 @@ class Controller:  # pylint: disable=R0902,R0904
         :param desc: Name of the site to be created.
         """
 
-        # TODO: Not currently supported on UDM Pro as site support doesn't exist.
+        # TODO: Not currently supported on UDMP as site support doesn't exist.
         if self.version == "UDMP-unifiOS":
-            raise APIError("Controller version not supported: %s" % self.version)
+            raise APIError(
+                "Controller version not supported: %s" % self.version
+                )
 
-        return self._run_command("add-site", params={"desc": desc}, mgr="sitemgr")
+        return self._run_command(
+            "add-site",
+            params={"desc": desc},
+            mgr="sitemgr"
+            )
 
     def block_client(self, mac):
         """Add a client to the block list.
@@ -463,7 +480,7 @@ class Controller:  # pylint: disable=R0902,R0904
         """Archive all Alerts"""
         return self._run_command("archive-all-alarms", mgr="evtmgr")
 
-    # TODO: Not currently supported on UDM Pro as it now utilizes async-backups.
+    # TODO: Not currently supported on UDMP as it now utilizes async-backups.
     def create_backup(self, days="0"):
         """Ask controller to create a backup archive file
 
@@ -476,12 +493,18 @@ class Controller:  # pylint: disable=R0902,R0904
         :return: URL path to backup file
         """
         if self.version == "UDMP-unifiOS":
-            raise APIError("Controller version not supported: %s" % self.version)
+            raise APIError(
+                "Controller version not supported: %s" % self.version
+                )
 
-        res = self._run_command("backup", mgr="system", params={"days": days})
+        res = self._run_command(
+            "backup",
+            mgr="system",
+            params={"days": days}
+            )
         return res[0]["url"]
 
-    # TODO: Not currently supported on UDM Pro as it now utilizes async-backups.
+    # TODO: Not currently supported on UDMP as it now utilizes async-backups.
     def get_backup(self, download_path=None, target_file="unifi-backup.unf"):
         """
         :param download_path: path to backup; if None is given
@@ -490,7 +513,9 @@ class Controller:  # pylint: disable=R0902,R0904
             backup archive to, should have .unf extension for restore.
         """
         if self.version == "UDMP-unifiOS":
-            raise APIError("Controller version not supported: %s" % self.version)
+            raise APIError(
+                "Controller version not supported: %s" % self.version
+                )
 
         if not download_path:
             download_path = self.create_backup()
@@ -543,9 +568,19 @@ class Controller:  # pylint: disable=R0902,R0904
         """
         cmd = "unauthorize-guest"
         params = {"mac": guest_mac}
-        return self._run_command(cmd, params=params)
+        return self._run_command(
+            cmd,
+            params=params
+            )
 
-    def get_firmware(self, cached=True, available=True, known=False, site=False):
+    def get_firmware(
+            self,
+            cached=True,
+            available=True,
+            known=False,
+            site=False
+    ):
+
         """
         Return a list of available/cached firmware versions
 
@@ -579,7 +614,12 @@ class Controller:  # pylint: disable=R0902,R0904
         :return: True/False
         """
         return self._run_command(
-            "download", mgr="firmware", params={"device": device, "version": version}
+            "download",
+            mgr="firmware",
+            params={
+                "device": device,
+                "version": version
+                }
         )[0]["result"]
 
     def remove_firmware(self, version, device):
@@ -594,7 +634,12 @@ class Controller:  # pylint: disable=R0902,R0904
         :return: True/false
         """
         return self._run_command(
-            "remove", mgr="firmware", params={"device": device, "version": version}
+            "remove",
+            mgr="firmware",
+            params={
+                "device": device,
+                "version": version
+                }
         )[0]["result"]
 
     def get_tag(self):
@@ -608,7 +653,12 @@ class Controller:  # pylint: disable=R0902,R0904
         :param version: version to upgrade to
         """
         self._mac_cmd(
-            mac, "upgrade", mgr="devmgr", params={"upgrade_to_firmware": version}
+            mac,
+            "upgrade",
+            mgr="devmgr",
+            params={
+                "upgrade_to_firmware": version
+                }
         )
 
     def provision(self, mac):
@@ -634,7 +684,9 @@ class Controller:  # pylint: disable=R0902,R0904
         for setting in all_settings:
             s_sect = setting["key"]
             if (
-                    (cs_settings and "site_id" in setting)  # pylint: disable=R0916
+                    ( # pylint: disable=R0916
+                        cs_settings and "site_id" in setting
+                        )
                     or (not cs_settings and "site_id" not in setting)
                     or (section and s_sect not in section)
             ):
