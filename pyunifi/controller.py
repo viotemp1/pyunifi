@@ -194,6 +194,11 @@ class Controller:  # pylint: disable=R0902,R0904
         :param name: Site Name
         :return: True or APIError
         """
+
+        # TODO: Not currently supported on UDM Pro as site support doesn't exist.
+        if self.version == "UDMP-unifiOS":
+            raise APIError("Controller version not supported: %s" % self.version)
+
         for site in self.get_sites():
             if site["desc"] == name:
                 self.site_id = site["name"]
