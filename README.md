@@ -51,7 +51,7 @@ Create a Controller object.
  - `username`	-- the username to log in with
  - `password`	-- the password to log in with
  - `port`		-- the port of the controller host
- - `version`	-- the base version of the controller API [v4|v5]
+ - `version`	-- the base version of the controller API [v4|v5|unifiOS|UDMP-unifiOS]
  - `site_id`	-- the site ID to access
  - `ssl_verify`	-- Verify the controllers SSL certificate, default=True, can also be False or "path/to/custom_cert.pem"
 
@@ -208,6 +208,29 @@ Gets the current state & configuration of the given device based on its MAC Addr
 
   - `target_mac` -- MAC address of the device
 
+### `get_radius_users(self)`
+Returns a list of all RADIUS users, name, password, 24 digit user id, and 24 digit site id.
+
+### `add_radius_user(self, name, password)`
+Add a new RADIUS user with this username and password.
+
+- `name` -- the new user's username
+- `password` -- the new user's password
+
+### `update_radius_user(self, name, password, id)`
+Update a RADIUS user to this new username and password. 
+Requires the user's 24 digit user id, which can be gotten from `get_radius_users(self)`.
+
+- `name` -- the user's new username
+- `password` -- the user's new password
+- `id` -- the user's 24 digit user id.
+
+### `delete_radius_user(self, id)`
+Delete a RADIUS user. 
+Requires the user's 24 digit user id, which can be gotten from `get_radius_users(self)`.
+
+- `id` -- the user's 24 digit user id.
+
 ### `get_switch_port_overrides(self, target_mac)`
 Gets a list of port overrides, in dictionary format, for the given target MAC address. The dictionary contains the port_idx, portconf_id, poe_mode, & name.
 
@@ -232,8 +255,17 @@ The following small utilities are bundled with the API:
 
 ### unifi-ls-clients
 
-Lists the currently active clients on the networks. Takes parameters for
-controller, username, password, controller version and site ID (UniFi >= 3.x)
+Lists the currently active clients on the networks. Can take the following parameters:
+|Parameters    	|Description   				|Default |
+| ------------- |---------------------------------------| -------|
+| -c      	| controller address 			|unifi   |
+| -u      	| controller username      		|admin   |
+| -p 		| controller password     		| 	 |
+| -b 		| controller port      			|8443	 |
+| -v 		| controller base version      		|v5	 |
+| -s 		| site ID, UniFi >=3.x only      	|default |
+| -V 		| ignore SSL certificates      		|	 |
+| -C 		| verify with ssl certificate pem file	| 	 |
 
 ```
 jb@unifi:~ % unifi-ls-clients -c localhost -u admin -p p4ssw0rd -v v3 -s default
