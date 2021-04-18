@@ -171,7 +171,7 @@ class Controller:  # pylint: disable=R0902,R0904
 
         if response.headers.get("X-CSRF-Token"):
             self.headers = {"X-CSRF-Token": response.headers["X-CSRF-Token"]}
-        
+
         return self._jsondec(response.text)
 
     def _api_delete(self, url, params=None):
@@ -344,16 +344,18 @@ class Controller:  # pylint: disable=R0902,R0904
         """Update a user to this new username and password
         :param name: user's new username
         :param password: user's new password
-        :param id: the user's 24 digit user id, from get_radius_users() or add_radius_user()
+        :param id: the user's 24 digit user id, from get_radius_users()
+            or add_radius_user()
         :returns: user's name, password, 24 digit user id, and 24 digit site id
         :returns: [] if no change was made
         """
-        params =  {'name': name, '_id': user_id, 'x_password': password}
+        params = {'name': name, '_id': user_id, 'x_password': password}
         return self._api_update('rest/account/' + user_id, params)
 
     def delete_radius_user(self, user_id):
         """Delete user
-        :param id: the user's 24 digit user id, from get_radius_users() or add_radius_user()
+        :param id: the user's 24 digit user id, from get_radius_users()
+            or add_radius_user()
         :returns: [] if successful
         """
         return self._api_delete('rest/account/' + user_id)
@@ -729,9 +731,7 @@ class Controller:  # pylint: disable=R0902,R0904
         for setting in all_settings:
             s_sect = setting["key"]
             if (
-                    ( # pylint: disable=R0916
-                        cs_settings and "site_id" in setting
-                        )
+                    (cs_settings and "site_id" in setting)
                     or (not cs_settings and "site_id" not in setting)
                     or (section and s_sect not in section)
             ):
