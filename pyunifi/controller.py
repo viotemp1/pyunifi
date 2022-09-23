@@ -227,7 +227,7 @@ class Controller:  # pylint: disable=R0902,R0904
       
     def get_portforward(self):
         """Return a list of Port Forward Rules."""
-        return self._api_write("rest/portforward")
+        return self._api_write("stat/portforward")
 
     def get_alerts_unarchived(self):
         """Return a list of Alerts unarchived."""
