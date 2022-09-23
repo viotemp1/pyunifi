@@ -143,7 +143,7 @@ class Controller:  # pylint: disable=R0902,R0904
 
     @retry_login
     def _write(self, url, params=None):
-        print("url", url, "params", params)
+        # print("url", url, "params", params)
         response = self.session.post(url, json=params, headers=self.headers)
 
         if response.headers.get("X-CSRF-Token"):
@@ -230,9 +230,9 @@ class Controller:  # pylint: disable=R0902,R0904
         """Return a list of Port Forward Rules."""
         return self._api_write("stat/portforward")
       
-    def set_portforward(self, rule_id, payload):
-        """change port forward for rule"""
-        return self._api_write(f"rest/portforward/{rule_id}", payload)
+    # def set_portforward(self, rule_id, payload):
+    #     """change port forward for rule"""
+    #     return self._api_write(f"rest/portforward/{rule_id}", payload)
 
     def get_alerts_unarchived(self):
         """Return a list of Alerts unarchived."""
