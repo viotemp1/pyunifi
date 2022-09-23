@@ -231,7 +231,7 @@ class Controller:  # pylint: disable=R0902,R0904
       
     def set_portforward(self, rule_id, payload):
         """change port forward for rule"""
-        return self._api_write(f"rest/portforward/{rule_id}", payload)
+        return self._api_write(f"rest/portforward/{rule_id}", params=payload)
 
     def get_alerts_unarchived(self):
         """Return a list of Alerts unarchived."""
